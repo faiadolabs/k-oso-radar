@@ -208,13 +208,13 @@ function animate() {
 
 // Agregar punto TO (en km hacia el cluster desde el VOR)
 document.getElementById('addToPoint').addEventListener('click', () => {
-    // Simplemente le paso el rumbo del cajetín
-    agregarPunto(parseFloat(document.getElementById('angle').value));
+    agregarPunto(complementaryHeading(parseFloat(document.getElementById('angle').value)));
 });
 
 // Agregar punto FROM (en km desde el cluster hasta el VOR)
 document.getElementById('addFromPoint').addEventListener('click', () => {
-    agregarPunto(complementaryHeading(parseFloat(document.getElementById('angle').value)));
+    // Simplemente le paso el rumbo del cajetín
+    agregarPunto(parseFloat(document.getElementById('angle').value));
 });
 
 // Se agrega el punto siguiendo el águlo del radial FROM (desde el centro hasta el punto)
@@ -264,8 +264,8 @@ canvas.addEventListener('click', e => {
 
     if (clickedPoint) {
         document.getElementById('modalContent').innerHTML = `
-            <b>Rumbo TO:</b> ${clickedPoint.angle.toFixed(1)}°<br>
-            <b>Rumbo FROM:</b> ${complementaryHeading(clickedPoint.angle).toFixed(1)}°<br>
+            <b>Rumbo TO:</b> ${complementaryHeading(clickedPoint.angle).toFixed(1)}°<br>
+            <b>Rumbo FROM:</b> ${clickedPoint.angle.toFixed(1)}°<br>
             <b>Distancia:</b> ${clickedPoint.rKm.toFixed(1)} km<br>
             <br><b>Nota:</b><br>
              <span id="modalNote" style="white-space: pre-wrap;"></span>
