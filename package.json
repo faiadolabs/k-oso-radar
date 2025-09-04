@@ -1,6 +1,6 @@
 {
   "name": "k-oso-radar",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Radar for Star Citizen",
   "main": "index.js",
   "directories": {
