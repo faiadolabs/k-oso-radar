@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - main
+      - main  # o tu rama principal
 
 permissions:
   contents: read
@@ -12,10 +12,30 @@ permissions:
 
 jobs:
   deploy:
+    environment:
+      name: github-pages
+      # Para que GitHub muestre un botón “View Deployment” directamente en la UI del entorno
+      url: ${{ steps.deployment.outputs.page_url }}
+
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # 🚀 En el futuro para compilar (React con Vite/CRA), descomenta:
+      # - name: Setup Node.js
+      #   uses: actions/setup-node@v4
+      #   with:
+      #     node-version: 20
+      #
+      # - name: Install dependencies
+      #   run: npm ci
+      #
+      # - name: Build project
+      #   run: npm run build
+
+      - name: Disable Jekyll
+        run: echo "" > public/.nojekyll
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -23,7 +43,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: public
+          path: public   # cambia a dist/ o build/ cuando uses React
 
       - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4

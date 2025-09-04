@@ -2,14 +2,14 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Radar Interactivo Avanzado</title>
+<title>Radar en Km</title>
 <style>
     body { margin: 0; overflow: hidden; background: #000; color: white; font-family: monospace; }
     #controls {
         position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7);
         padding: 10px; border-radius: 5px; font-size: 14px;
     }
-    input { width: 60px; }
+    input { width: 70px; }
 </style>
 </head>
 <body>
@@ -18,11 +18,11 @@
 
 <div id="controls">
     <div>
-        <label>Distancia: <input type="number" id="distance" value="200"></label>
-        <label>Rumbo: <input type="number" id="angle" value="45"></label>
+        <label>Distancia (km): <input type="number" step="0.1" id="distance" value="3.5"></label>
+        <label>Rumbo: <input type="number" step="1" id="angle" value="45"></label>
         <button id="addPoint">Agregar Punto</button>
     </div>
-    <div id="mouseInfo">Mouse: r=0, θ=0°</div>
+    <div id="mouseInfo">Mouse: r=0 km, θ=0°</div>
 </div>
 
 <script>
@@ -31,6 +31,9 @@ const ctx = canvas.getContext('2d');
 let width = canvas.width = window.innerWidth;
 let height = canvas.height = window.innerHeight;
 
+// 🔧 Escala de conversión: 1 km = 20 píxeles
+const pixelsPerKm = 20;
+
 let offsetX = 0, offsetY = 0;
 let scale = 1;
 const minScale = 0.5, maxScale = 5;
@@ -38,7 +41,7 @@ const minScale = 0.5, maxScale = 5;
 let points = [];
 let radarAngle = 0; // ángulo del haz animado
 
-// Conversión polar -> cartesiana
+// Polar → Cartesiano
 function polarToCartesian(r, angleDegrees) {
     const angle = angleDegrees * Math.PI / 180;
     const cx = width / 2;
@@ -49,13 +52,13 @@ function polarToCartesian(r, angleDegrees) {
     };
 }
 
-// Conversión cartesiana -> polar
+// Cartesiano → Polar
 function cartesianToPolar(x, y) {
     const cx = width / 2;
     const cy = height / 2;
     const dx = x - cx;
     const dy = cy - y;
-    const r = Math.sqrt(dx*dx + dy*dy);
+    const r = Math.sqrt(dx*dx + dy*dy) / pixelsPerKm; // convertir a km
     let theta = Math.atan2(dx, dy) * 180 / Math.PI;
     if (theta < 0) theta += 360;
     return {r, theta};
@@ -74,13 +77,15 @@ function drawRadar() {
     ctx.fillStyle = 'black';
     ctx.fillRect(-offsetX/scale, -offsetY/scale, width/scale, height/scale);
 
-    // Círculos concéntricos
+    // Círculos concéntricos cada 5 km
     ctx.strokeStyle = 'rgba(0,255,0,0.3)';
-    ctx.lineWidth = 1;
-    for (let r = 100; r < 2000; r += 100) {
+    ctx.fillStyle = 'lime';
+    ctx.font = "12px monospace";
+    for (let rKm = 5; rKm <= 100; rKm += 5) { 
         ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, 2*Math.PI);
+        ctx.arc(cx, cy, rKm * pixelsPerKm, 0, 2*Math.PI);
         ctx.stroke();
+        ctx.fillText(`${rKm} km`, cx + rKm * pixelsPerKm + 5, cy - 5);
     }
 
     // Punto central
@@ -89,16 +94,16 @@ function drawRadar() {
     ctx.arc(cx, cy, 5, 0, 2*Math.PI);
     ctx.fill();
 
-    // Puntos rojos
+    // Puntos rojos (guardados en km)
     points.forEach(p => {
-        const pos = polarToCartesian(p.r, p.angle);
+        const pos = polarToCartesian(p.rKm * pixelsPerKm, p.angle);
         ctx.fillStyle = 'red';
         ctx.beginPath();
         ctx.arc(pos.x, pos.y, 6, 0, 2*Math.PI);
         ctx.fill();
     });
 
-    // Haz del radar (animado)
+    // Haz del radar
     const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, width);
     grad.addColorStop(0, "rgba(0,255,0,0.4)");
     grad.addColorStop(1, "rgba(0,255,0,0)");
@@ -120,11 +125,11 @@ function animate() {
     requestAnimationFrame(animate);
 }
 
-// Agregar punto
+// Agregar punto (en km)
 document.getElementById('addPoint').addEventListener('click', () => {
     const r = parseFloat(document.getElementById('distance').value);
     const angle = parseFloat(document.getElementById('angle').value);
-    points.push({r, angle});
+    points.push({rKm: r, angle});
 });
 
 // Zoom con rueda
@@ -142,12 +147,12 @@ canvas.addEventListener('wheel', e => {
     }
     scale = Math.min(maxScale, Math.max(minScale, scale));
 
-    // Reajustar offset para mantener el punto del mouse fijo
+    // Mantener el mouse en el mismo lugar al hacer zoom
     offsetX = mouseX - (mouseX - offsetX) * (scale / prevScale);
     offsetY = mouseY - (mouseY - offsetY) * (scale / prevScale);
 });
 
-// Pan con mouse
+// Pan
 let dragging = false, startX, startY;
 canvas.addEventListener('mousedown', e => { dragging = true; startX = e.clientX - offsetX; startY = e.clientY - offsetY; });
 canvas.addEventListener('mousemove', e => {
@@ -155,12 +160,12 @@ canvas.addEventListener('mousemove', e => {
         offsetX = e.clientX - startX;
         offsetY = e.clientY - startY;
     }
-    // Mostrar coordenadas del mouse
+    // Coordenadas del mouse en km
     const invX = (e.clientX - offsetX) / scale;
     const invY = (e.clientY - offsetY) / scale;
     const polar = cartesianToPolar(invX, invY);
     document.getElementById('mouseInfo').textContent = 
-        `Mouse: r=${polar.r.toFixed(1)}, θ=${polar.theta.toFixed(1)}°`;
+        `Mouse: r=${polar.r.toFixed(1)} km, θ=${polar.theta.toFixed(1)}°`;
 });
 canvas.addEventListener('mouseup', () => dragging = false);
 canvas.addEventListener('mouseleave', () => dragging = false);
@@ -177,3 +182,15 @@ animate();
 
 </body>
 </html>
+
+<!-- ✅ Cambios principales:
+
+Escala definida: 1 km = 20 px (pixelsPerKm).
+
+Los puntos se guardan en km (rKm).
+
+Los círculos concéntricos están a 5 km cada uno, con etiquetas.
+
+El mouse muestra r en km con 1 decimal.
+
+El input acepta decimales (step="0.1"). -->
