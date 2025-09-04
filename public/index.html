@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Radar Escalable en Km</title>
+<title>Radar Escalable con Puntos Cardinales</title>
 <style>
     body { margin: 0; overflow: hidden; background: #000; color: white; font-family: monospace; }
     #controls {
@@ -90,6 +90,22 @@ function drawRadar() {
         ctx.stroke();
         ctx.fillText(`${rKm} km`, cx + rKm * pixelsPerKm + 5, cy - 5);
     }
+
+    // Cruz central
+    ctx.strokeStyle = 'rgba(0,255,0,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx, 0); ctx.lineTo(cx, height); // Vertical
+    ctx.moveTo(0, cy); ctx.lineTo(width, cy);  // Horizontal
+    ctx.stroke();
+
+    // Etiquetas cardinales
+    ctx.fillStyle = 'white';
+    ctx.font = "bold 16px monospace";
+    ctx.fillText("N", cx - 5, cy - (pixelsPerKm*55)); // 55 km hacia arriba
+    ctx.fillText("S", cx - 5, cy + (pixelsPerKm*55));
+    ctx.fillText("E", cx + (pixelsPerKm*55), cy + 5);
+    ctx.fillText("W", cx - (pixelsPerKm*55) - 10, cy + 5);
 
     // Punto central
     ctx.fillStyle = 'white';
