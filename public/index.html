@@ -2,14 +2,14 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Radar en Km</title>
+<title>Radar Escalable en Km</title>
 <style>
     body { margin: 0; overflow: hidden; background: #000; color: white; font-family: monospace; }
     #controls {
         position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7);
         padding: 10px; border-radius: 5px; font-size: 14px;
     }
-    input { width: 70px; }
+    input { width: 80px; }
 </style>
 </head>
 <body>
@@ -22,6 +22,9 @@
         <label>Rumbo: <input type="number" step="1" id="angle" value="45"></label>
         <button id="addPoint">Agregar Punto</button>
     </div>
+    <div>
+        <label>Escala (px/km): <input type="number" id="scaleBase" value="20" min="1" step="1"></label>
+    </div>
     <div id="mouseInfo">Mouse: r=0 km, θ=0°</div>
 </div>
 
@@ -31,8 +34,8 @@ const ctx = canvas.getContext('2d');
 let width = canvas.width = window.innerWidth;
 let height = canvas.height = window.innerHeight;
 
-// 🔧 Escala de conversión: 1 km = 20 píxeles
-const pixelsPerKm = 20;
+// 🔧 Escala base: 1 km = X píxeles (ajustable)
+let pixelsPerKm = parseInt(document.getElementById('scaleBase').value);
 
 let offsetX = 0, offsetY = 0;
 let scale = 1;
@@ -132,6 +135,11 @@ document.getElementById('addPoint').addEventListener('click', () => {
     points.push({rKm: r, angle});
 });
 
+// Cambiar escala base dinámicamente
+document.getElementById('scaleBase').addEventListener('input', e => {
+    pixelsPerKm = parseInt(e.target.value);
+});
+
 // Zoom con rueda
 canvas.addEventListener('wheel', e => {
     e.preventDefault();
@@ -182,15 +190,3 @@ animate();
 
 </body>
 </html>
-
-<!-- ✅ Cambios principales:
-
-Escala definida: 1 km = 20 px (pixelsPerKm).
-
-Los puntos se guardan en km (rKm).
-
-Los círculos concéntricos están a 5 km cada uno, con etiquetas.
-
-El mouse muestra r en km con 1 decimal.
-
-El input acepta decimales (step="0.1"). -->
