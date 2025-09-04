@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Radar Interactivo</title>
+<style>
+    body { margin: 0; overflow: hidden; background: #000; color: white; font-family: sans-serif; }
+    #controls {
+        position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7);
+        padding: 10px; border-radius: 5px;
+    }
+    input { width: 50px; }
+</style>
+</head>
+<body>
+
+<canvas id="radar"></canvas>
+
+<div id="controls">
+    <label>Distancia: <input type="number" id="distance" value="100"></label>
+    <label>Rumbo: <input type="number" id="angle" value="0"></label>
+    <button id="addPoint">Agregar Punto</button>
+</div>
+
+<script>
+const canvas = document.getElementById('radar');
+const ctx = canvas.getContext('2d');
+let width = canvas.width = window.innerWidth;
+let height = canvas.height = window.innerHeight;
+
+let offsetX = 0, offsetY = 0;
+let scale = 1;
+
+let points = [];
+
+// Dibujar radar
+function drawRadar() {
+    ctx.save();
+    ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY); // Aplicar zoom y pan
+    ctx.clearRect(-offsetX/scale, -offsetY/scale, width/scale, height/scale);
+
+    // Fondo
+    ctx.fillStyle = 'black';
+    ctx.fillRect(-offsetX/scale, -offsetY/scale, width/scale, height/scale);
+
+    // Punto central
+    const cx = width / 2;
+    const cy = height / 2;
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 5, 0, 2*Math.PI);
+    ctx.fill();
+
+    // Círculos concéntricos
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 1;
+    for (let r = 50; r < 1000; r += 50) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, 2*Math.PI);
+        ctx.stroke();
+    }
+
+    // Dibujar puntos rojos
+    points.forEach(p => {
+        const pos = polarToCartesian(p.r, p.angle);
+        ctx.fillStyle = 'red';
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 5, 0, 2*Math.PI);
+        ctx.fill();
+    });
+
+    ctx.restore();
+}
+
+// Convertir coordenadas polares a cartesianas
+function polarToCartesian(r, angleDegrees) {
+    const angle = angleDegrees * Math.PI / 180;
+    const cx = width / 2;
+    const cy = height / 2;
+    return {
+        x: cx + r * Math.sin(angle),
+        y: cy - r * Math.cos(angle)
+    };
+}
+
+// Agregar punto
+document.getElementById('addPoint').addEventListener('click', () => {
+    const r = parseFloat(document.getElementById('distance').value);
+    const angle = parseFloat(document.getElementById('angle').value);
+    points.push({r, angle});
+    drawRadar();
+});
+
+// Zoom con rueda del mouse
+canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const zoomAmount = -e.deltaY * 0.001;
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+
+    // Ajustar offset para zoom centrado en el mouse
+    offsetX -= (mouseX - offsetX) * zoomAmount;
+    offsetY -= (mouseY - offsetY) * zoomAmount;
+    scale *= 1 + zoomAmount;
+    drawRadar();
+});
+
+// Pan con arrastrar
+let isDragging = false, startX, startY;
+canvas.addEventListener('mousedown', e => { isDragging = true; startX = e.clientX - offsetX; startY = e.clientY - offsetY; });
+canvas.addEventListener('mousemove', e => {
+    if (isDragging) {
+        offsetX = e.clientX - startX;
+        offsetY = e.clientY - startY;
+        drawRadar();
+    }
+});
+canvas.addEventListener('mouseup', () => isDragging = false);
+canvas.addEventListener('mouseleave', () => isDragging = false);
+
+// Ajustar canvas al tamaño de ventana
+window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    drawRadar();
+});
+
+// Dibujar inicial
+drawRadar();
+</script>
+
+</body>
+</html>
