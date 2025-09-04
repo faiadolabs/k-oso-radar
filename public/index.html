@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Radar Escalable con Puntos Cardinales</title>
+<title>Radar con Alcance Ajustable</title>
 <style>
     body { margin: 0; overflow: hidden; background: #000; color: white; font-family: monospace; }
     #controls {
@@ -20,13 +20,32 @@
     <div>
         <label>Distancia (km): <input type="number" step="0.1" id="distance" value="3.5"></label>
         <label>Rumbo: <input type="number" step="1" id="angle" value="45"></label>
-        <button id="addPoint">Agregar Punto</button>
+        <button id="addToPoint">Add TO</button>
+        <button id="addFromPoint">Add FROM</button>
     </div>
     <div>
         <label>Escala (px/km): <input type="number" id="scaleBase" value="20" min="1" step="1"></label>
     </div>
+    <div>
+        <label>Alcance (km): <input type="number" id="rangeKm" value="100" min="10" step="5"></label>
+    </div>
     <div id="mouseInfo">Mouse: r=0 km, θ=0°</div>
 </div>
+
+<div id="modal" style="
+  display:none;
+  position:fixed; top:0; left:0; right:0; bottom:0;
+  background: rgba(0,0,0,.65);
+  align-items:center; justify-content:center;
+  z-index:100;
+">
+  <div style="background:#111; padding:20px; border:1px solid #0f0; border-radius:10px; color:#0f0; min-width:220px;">
+    <h3 style="margin-top:0;">Información del punto</h3>
+    <p id="modalContent">---</p>
+    <button id="closeModal">Cerrar</button>
+  </div>
+</div>
+
 
 <script>
 const canvas = document.getElementById('radar');
@@ -34,8 +53,8 @@ const ctx = canvas.getContext('2d');
 let width = canvas.width = window.innerWidth;
 let height = canvas.height = window.innerHeight;
 
-// 🔧 Escala base: 1 km = X píxeles (ajustable)
 let pixelsPerKm = parseInt(document.getElementById('scaleBase').value);
+let radarRangeKm = parseInt(document.getElementById('rangeKm').value);
 
 let offsetX = 0, offsetY = 0;
 let scale = 1;
@@ -67,6 +86,25 @@ function cartesianToPolar(x, y) {
     return {r, theta};
 }
 
+/**
+ * Calcula el rumbo complementario/opuesto de un ángulo en grados.
+ * @param {number} heading - Rumbo actual (0-360)
+ * @returns {number} Rumbo complementario (0-360)
+ */
+ function complementaryHeading(heading) {
+    if (typeof heading !== 'number' || isNaN(heading)) {
+        throw new Error('El rumbo debe ser un número válido');
+    }
+
+    // Normalizamos el rumbo a 0-360
+    const normalized = ((heading % 360) + 360) % 360;
+
+    // El rumbo complementario está 180° opuesto
+    const complement = (normalized + 180) % 360;
+
+    return complement;
+}
+
 // Dibujar radar
 function drawRadar() {
     ctx.save();
@@ -75,16 +113,17 @@ function drawRadar() {
 
     const cx = width / 2;
     const cy = height / 2;
+    const maxRadiusPx = radarRangeKm * pixelsPerKm;
 
     // Fondo
     ctx.fillStyle = 'black';
     ctx.fillRect(-offsetX/scale, -offsetY/scale, width/scale, height/scale);
 
-    // Círculos concéntricos cada 5 km
+    // Círculos concéntricos cada 5 km hasta el alcance máximo
     ctx.strokeStyle = 'rgba(0,255,0,0.3)';
     ctx.fillStyle = 'lime';
     ctx.font = "12px monospace";
-    for (let rKm = 5; rKm <= 100; rKm += 5) { 
+    for (let rKm = 5; rKm <= radarRangeKm; rKm += 5) { 
         ctx.beginPath();
         ctx.arc(cx, cy, rKm * pixelsPerKm, 0, 2*Math.PI);
         ctx.stroke();
@@ -95,17 +134,17 @@ function drawRadar() {
     ctx.strokeStyle = 'rgba(0,255,0,0.5)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(cx, 0); ctx.lineTo(cx, height); // Vertical
-    ctx.moveTo(0, cy); ctx.lineTo(width, cy);  // Horizontal
+    ctx.moveTo(cx, cy - maxRadiusPx); ctx.lineTo(cx, cy + maxRadiusPx); // Vertical
+    ctx.moveTo(cx - maxRadiusPx, cy); ctx.lineTo(cx + maxRadiusPx, cy); // Horizontal
     ctx.stroke();
 
-    // Etiquetas cardinales
+    // Etiquetas cardinales (colocadas en el borde del alcance)
     ctx.fillStyle = 'white';
     ctx.font = "bold 16px monospace";
-    ctx.fillText("N", cx - 5, cy - (pixelsPerKm*55)); // 55 km hacia arriba
-    ctx.fillText("S", cx - 5, cy + (pixelsPerKm*55));
-    ctx.fillText("E", cx + (pixelsPerKm*55), cy + 5);
-    ctx.fillText("W", cx - (pixelsPerKm*55) - 10, cy + 5);
+    ctx.fillText("N", cx - 5, cy - maxRadiusPx - 10);
+    ctx.fillText("S", cx - 5, cy + maxRadiusPx + 20);
+    ctx.fillText("E", cx + maxRadiusPx + 10, cy + 5);
+    ctx.fillText("W", cx - maxRadiusPx - 25, cy + 5);
 
     // Punto central
     ctx.fillStyle = 'white';
@@ -113,26 +152,34 @@ function drawRadar() {
     ctx.arc(cx, cy, 5, 0, 2*Math.PI);
     ctx.fill();
 
-    // Puntos rojos (guardados en km)
+    // Puntos rojos (solo si están dentro del alcance)
     points.forEach(p => {
-        const pos = polarToCartesian(p.rKm * pixelsPerKm, p.angle);
-        ctx.fillStyle = 'red';
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 6, 0, 2*Math.PI);
-        ctx.fill();
+        if (p.rKm <= radarRangeKm) {
+            const pos = polarToCartesian(p.rKm * pixelsPerKm, p.angle);
+            ctx.fillStyle = 'red';
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, 6, 0, 2*Math.PI);
+            ctx.fill();
+        }
     });
 
-    // Haz del radar
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, width);
+    // Haz del radar (recortado al alcance máximo)
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, maxRadiusPx, 0, 2*Math.PI);
+    ctx.clip();
+
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxRadiusPx);
     grad.addColorStop(0, "rgba(0,255,0,0.4)");
     grad.addColorStop(1, "rgba(0,255,0,0)");
     ctx.fillStyle = grad;
 
     ctx.beginPath();
     ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, width, (radarAngle-1)*Math.PI/180, (radarAngle+1)*Math.PI/180);
+    ctx.arc(cx, cy, maxRadiusPx, (radarAngle-1)*Math.PI/180, (radarAngle+1)*Math.PI/180);
     ctx.closePath();
     ctx.fill();
+    ctx.restore();
 
     ctx.restore();
 }
@@ -144,8 +191,17 @@ function animate() {
     requestAnimationFrame(animate);
 }
 
-// Agregar punto (en km)
-document.getElementById('addPoint').addEventListener('click', () => {
+// Agregar punto TO (en km hacia el cluster desde el VOR)
+document.getElementById('addToPoint').addEventListener('click', () => {
+    const r = parseFloat(document.getElementById('distance').value);
+    const angle = parseFloat(document.getElementById('angle').value);
+    const angleComplementary = parseFloat(complementaryHeading(angle));
+    points.push({rKm: r, angle: angleComplementary });
+    console.log(angleComplementary);
+});
+
+// Agregar punto FROM (en km desde el cluster hasta el VOR)
+document.getElementById('addFromPoint').addEventListener('click', () => {
     const r = parseFloat(document.getElementById('distance').value);
     const angle = parseFloat(document.getElementById('angle').value);
     points.push({rKm: r, angle});
@@ -154,6 +210,11 @@ document.getElementById('addPoint').addEventListener('click', () => {
 // Cambiar escala base dinámicamente
 document.getElementById('scaleBase').addEventListener('input', e => {
     pixelsPerKm = parseInt(e.target.value);
+});
+
+// Cambiar alcance del radar
+document.getElementById('rangeKm').addEventListener('input', e => {
+    radarRangeKm = parseInt(e.target.value);
 });
 
 // Zoom con rueda
