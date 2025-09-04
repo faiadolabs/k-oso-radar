@@ -2,14 +2,14 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Radar Interactivo</title>
+<title>Radar Interactivo Avanzado</title>
 <style>
-    body { margin: 0; overflow: hidden; background: #000; color: white; font-family: sans-serif; }
+    body { margin: 0; overflow: hidden; background: #000; color: white; font-family: monospace; }
     #controls {
         position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7);
-        padding: 10px; border-radius: 5px;
+        padding: 10px; border-radius: 5px; font-size: 14px;
     }
-    input { width: 50px; }
+    input { width: 60px; }
 </style>
 </head>
 <body>
@@ -17,9 +17,12 @@
 <canvas id="radar"></canvas>
 
 <div id="controls">
-    <label>Distancia: <input type="number" id="distance" value="100"></label>
-    <label>Rumbo: <input type="number" id="angle" value="0"></label>
-    <button id="addPoint">Agregar Punto</button>
+    <div>
+        <label>Distancia: <input type="number" id="distance" value="200"></label>
+        <label>Rumbo: <input type="number" id="angle" value="45"></label>
+        <button id="addPoint">Agregar Punto</button>
+    </div>
+    <div id="mouseInfo">Mouse: r=0, θ=0°</div>
 </div>
 
 <script>
@@ -30,49 +33,12 @@ let height = canvas.height = window.innerHeight;
 
 let offsetX = 0, offsetY = 0;
 let scale = 1;
+const minScale = 0.5, maxScale = 5;
 
 let points = [];
+let radarAngle = 0; // ángulo del haz animado
 
-// Dibujar radar
-function drawRadar() {
-    ctx.save();
-    ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY); // Aplicar zoom y pan
-    ctx.clearRect(-offsetX/scale, -offsetY/scale, width/scale, height/scale);
-
-    // Fondo
-    ctx.fillStyle = 'black';
-    ctx.fillRect(-offsetX/scale, -offsetY/scale, width/scale, height/scale);
-
-    // Punto central
-    const cx = width / 2;
-    const cy = height / 2;
-    ctx.fillStyle = 'white';
-    ctx.beginPath();
-    ctx.arc(cx, cy, 5, 0, 2*Math.PI);
-    ctx.fill();
-
-    // Círculos concéntricos
-    ctx.strokeStyle = 'white';
-    ctx.lineWidth = 1;
-    for (let r = 50; r < 1000; r += 50) {
-        ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, 2*Math.PI);
-        ctx.stroke();
-    }
-
-    // Dibujar puntos rojos
-    points.forEach(p => {
-        const pos = polarToCartesian(p.r, p.angle);
-        ctx.fillStyle = 'red';
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 5, 0, 2*Math.PI);
-        ctx.fill();
-    });
-
-    ctx.restore();
-}
-
-// Convertir coordenadas polares a cartesianas
+// Conversión polar -> cartesiana
 function polarToCartesian(r, angleDegrees) {
     const angle = angleDegrees * Math.PI / 180;
     const cx = width / 2;
@@ -83,50 +49,130 @@ function polarToCartesian(r, angleDegrees) {
     };
 }
 
+// Conversión cartesiana -> polar
+function cartesianToPolar(x, y) {
+    const cx = width / 2;
+    const cy = height / 2;
+    const dx = x - cx;
+    const dy = cy - y;
+    const r = Math.sqrt(dx*dx + dy*dy);
+    let theta = Math.atan2(dx, dy) * 180 / Math.PI;
+    if (theta < 0) theta += 360;
+    return {r, theta};
+}
+
+// Dibujar radar
+function drawRadar() {
+    ctx.save();
+    ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY);
+    ctx.clearRect(-offsetX/scale, -offsetY/scale, width/scale, height/scale);
+
+    const cx = width / 2;
+    const cy = height / 2;
+
+    // Fondo
+    ctx.fillStyle = 'black';
+    ctx.fillRect(-offsetX/scale, -offsetY/scale, width/scale, height/scale);
+
+    // Círculos concéntricos
+    ctx.strokeStyle = 'rgba(0,255,0,0.3)';
+    ctx.lineWidth = 1;
+    for (let r = 100; r < 2000; r += 100) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, 2*Math.PI);
+        ctx.stroke();
+    }
+
+    // Punto central
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 5, 0, 2*Math.PI);
+    ctx.fill();
+
+    // Puntos rojos
+    points.forEach(p => {
+        const pos = polarToCartesian(p.r, p.angle);
+        ctx.fillStyle = 'red';
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 6, 0, 2*Math.PI);
+        ctx.fill();
+    });
+
+    // Haz del radar (animado)
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, width);
+    grad.addColorStop(0, "rgba(0,255,0,0.4)");
+    grad.addColorStop(1, "rgba(0,255,0,0)");
+    ctx.fillStyle = grad;
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, width, (radarAngle-1)*Math.PI/180, (radarAngle+1)*Math.PI/180);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+}
+
+// Animación
+function animate() {
+    radarAngle = (radarAngle + 1) % 360;
+    drawRadar();
+    requestAnimationFrame(animate);
+}
+
 // Agregar punto
 document.getElementById('addPoint').addEventListener('click', () => {
     const r = parseFloat(document.getElementById('distance').value);
     const angle = parseFloat(document.getElementById('angle').value);
     points.push({r, angle});
-    drawRadar();
 });
 
-// Zoom con rueda del mouse
+// Zoom con rueda
 canvas.addEventListener('wheel', e => {
     e.preventDefault();
-    const zoomAmount = -e.deltaY * 0.001;
+    const zoomFactor = 1.05;
     const mouseX = e.clientX;
     const mouseY = e.clientY;
+    const prevScale = scale;
 
-    // Ajustar offset para zoom centrado en el mouse
-    offsetX -= (mouseX - offsetX) * zoomAmount;
-    offsetY -= (mouseY - offsetY) * zoomAmount;
-    scale *= 1 + zoomAmount;
-    drawRadar();
+    if (e.deltaY < 0) {
+        scale *= zoomFactor;
+    } else {
+        scale /= zoomFactor;
+    }
+    scale = Math.min(maxScale, Math.max(minScale, scale));
+
+    // Reajustar offset para mantener el punto del mouse fijo
+    offsetX = mouseX - (mouseX - offsetX) * (scale / prevScale);
+    offsetY = mouseY - (mouseY - offsetY) * (scale / prevScale);
 });
 
-// Pan con arrastrar
-let isDragging = false, startX, startY;
-canvas.addEventListener('mousedown', e => { isDragging = true; startX = e.clientX - offsetX; startY = e.clientY - offsetY; });
+// Pan con mouse
+let dragging = false, startX, startY;
+canvas.addEventListener('mousedown', e => { dragging = true; startX = e.clientX - offsetX; startY = e.clientY - offsetY; });
 canvas.addEventListener('mousemove', e => {
-    if (isDragging) {
+    if (dragging) {
         offsetX = e.clientX - startX;
         offsetY = e.clientY - startY;
-        drawRadar();
     }
+    // Mostrar coordenadas del mouse
+    const invX = (e.clientX - offsetX) / scale;
+    const invY = (e.clientY - offsetY) / scale;
+    const polar = cartesianToPolar(invX, invY);
+    document.getElementById('mouseInfo').textContent = 
+        `Mouse: r=${polar.r.toFixed(1)}, θ=${polar.theta.toFixed(1)}°`;
 });
-canvas.addEventListener('mouseup', () => isDragging = false);
-canvas.addEventListener('mouseleave', () => isDragging = false);
+canvas.addEventListener('mouseup', () => dragging = false);
+canvas.addEventListener('mouseleave', () => dragging = false);
 
-// Ajustar canvas al tamaño de ventana
+// Redimensionar
 window.addEventListener('resize', () => {
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
-    drawRadar();
 });
 
-// Dibujar inicial
-drawRadar();
+// Iniciar animación
+animate();
 </script>
 
 </body>
