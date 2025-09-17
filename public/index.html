@@ -26,7 +26,7 @@
 
 <div id="controls">
     <div>
-        <p>k-oso radar</p>
+        <p>k-oso radar <span>v0.3.0</span></p>
         <div>
             <label>Estado del servidor: <span id="status"></span></span></label>
             <label>canal: <input type="number" step="1" min="1" id="sesion" value=""></label>
@@ -449,7 +449,7 @@ animate();
 const statusEl = document.getElementById("status");
 
 // Conectar al servidor
-const socket = io("https://k-oso-radar-backend-production.up.railway.app", {
+const socket = io("https://k-oso-radar-backend-production.up.railway.app/", {
   reconnectionAttempts: Infinity, // reintenta siempre
   reconnectionDelay: 1000
 });
