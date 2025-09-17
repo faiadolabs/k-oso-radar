@@ -10,7 +10,15 @@
         padding: 10px; border-radius: 5px; font-size: 14px;
     }
     input { width: 80px; }
+    #status {
+        width:  15px;
+        height: 15px;
+        border-radius: 50%;
+        display: inline-block;
+        background-color: gray;
+    }
 </style>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
 
@@ -19,6 +27,13 @@
 <div id="controls">
     <div>
         <p>k-oso radar</p>
+        <div>
+            <label>Estado del servidor: <span id="status"></span></span></label>
+            <label>canal: <input type="number" step="1" min="1" id="sesion" value=""></label>
+            <button id="newSesion">NEW</button>
+            <label>callsign: <input type="text" id="user" value=""></label>
+        </div>
+        <hr/>
         <label>Distancia (km): <input type="number" step="0.1" id="distance" value="3.5"></label>
         <label>Rumbo: <input type="number" step="1" id="angle" value="45"></label>
         <div>
@@ -206,6 +221,73 @@ function animate() {
     requestAnimationFrame(animate);
 }
 
+function sesionState(ok){
+    document.getElementById('sesion').style.backgroundColor = ok ? 'white' : '#FFC7C7';
+}
+
+function sesionEnabled(ok){
+    document.getElementById('sesion').disabled = !ok;
+    document.getElementById('newSesion').disabled = !ok;
+}
+
+document.getElementById('sesion').addEventListener('click', () => {
+    const sesion = document.getElementById("sesion").value.trim();
+    if (sesion) socket.emit("obtener_puntos", sesion, (error, records) => {
+        // Limpiar puntos locales y redibujar
+        points = [];
+        drawRadar();
+        if(error){
+            console.error(error.error);
+            sesionState(false);
+            return;
+        } else{
+            sesionState(true);
+        }
+
+        console.log(records);
+        
+        records.forEach((data) => {
+            // Añado el nuevo punto al radar
+            points.push(data.punto);
+        });
+    });
+
+});
+
+// Crear nueva sesión
+document.getElementById('newSesion').addEventListener('click', () => {
+    const sesionAnterior = document.getElementById("sesion").value.trim()
+    socket.emit("new_sesion", ( error,idSesion ) => {
+        if (error) {
+            console.error("Error creando sesión:", error);
+            return;
+        }
+
+        // Cambiamos la sesión actual
+        document.getElementById("sesion").value = idSesion;
+
+        if(sesionAnterior){
+            // 🔹 Limpiar puntos locales
+            points = [];
+
+            // 🔹 Redibujar el radar vacío
+            drawRadar();
+            sesionState(true);
+            console.log(`Nueva sesión creada: ${idSesion}. Radar reseteado.`);
+        } else {
+            // En el caso de no haber sesión de usuario,
+            // se sincronizarán los puntos locales con la nueva sesión (para no perderlos)
+            points.forEach( ( punto ) => {
+                const data = { 
+                    sesion: idSesion,
+                    punto
+                }
+                enviarPuntoAlServidor(data);
+            });
+        }
+    });
+});
+
 // Agregar punto TO (en km hacia el cluster desde el VOR)
 document.getElementById('addToPoint').addEventListener('click', () => {
     agregarPunto(complementaryHeading(parseFloat(document.getElementById('angle').value)));
@@ -222,12 +304,35 @@ function agregarPunto(angle){
     const r = parseFloat(document.getElementById('distance').value);
     const note = document.getElementById('note').value.slice(0,255);
     const color = document.getElementById('pointColor').value;
+    const user = document.getElementById('user').value;
+    
     // Se pasa el radio del círculo a dibujar (importante para luego saber si se clica o no en el pq no es posible event DOM)
-    points.push({rKm: r, angle, radius_circulo: 6, note, color});
+    const punto = {rKm: r, angle, radius_circulo: 6, note, color, user};
+    
+    const data = { 
+        sesion: document.getElementById("sesion").value.trim(),
+        punto
+    }
+
+    // Añadir localmente el punto
+    points.push(punto);
+
+    enviarPuntoAlServidor(data);
 
     // LIMPIAR CAMPOS
     // document.getElementById('distance').value = '';
     // document.getElementById('angle').value = '';
+}
+
+function enviarPuntoAlServidor(data){
+    // Enviar al servidor
+    socket.emit("nuevo_punto", data, (res) => {
+        if (!res.ok) {
+          console.error(res.error);
+        } else {
+          console.log("Punto guardado en servidor:", res.punto);
+        }
+      });
 }
 
 // Cambiar escala base dinámicamente
@@ -269,8 +374,11 @@ canvas.addEventListener('click', e => {
             <b>Distancia:</b> ${clickedPoint.rKm.toFixed(1)} km<br>
             <br><b>Nota:</b><br>
              <span id="modalNote" style="white-space: pre-wrap;"></span>
+            <br><br><b>Informa:</b><br>
+            <span id="modalInforma" style="white-space: pre-wrap;"></span>
         `;
         document.getElementById('modalNote').textContent = clickedPoint.note || '(sin nota)';
+        document.getElementById('modalInforma').textContent = clickedPoint.user || '(desconocido)';
 
         modal.style.display = 'flex';
     }
@@ -336,6 +444,53 @@ window.addEventListener('resize', () => {
 
 // Iniciar animación
 animate();
+
+/* SINCRO CON EL SERVIDOR*/
+const statusEl = document.getElementById("status");
+
+// Conectar al servidor
+const socket = io("https://k-oso-radar-backend-production.up.railway.app", {
+  reconnectionAttempts: Infinity, // reintenta siempre
+  reconnectionDelay: 1000
+});
+
+// Cuando se conecta
+socket.on("connect", () => {
+  console.log("Conectado al servidor");
+  statusEl.style.backgroundColor = "green";
+  sesionEnabled(true);
+});
+
+// Cuando se desconecta
+socket.on("disconnect", () => {
+  console.log("Desconectado del servidor");
+  statusEl.style.backgroundColor = "red";
+  sesionEnabled(false);
+});
+
+// Si hay error de conexión
+socket.on("connect_error", (err) => {
+  console.warn("Error de conexión:", err.message);
+  statusEl.style.backgroundColor = "red";
+  sesionEnabled(false);
+});
+
+// Cuando recibe un punto
+socket.on("punto_actualizado", (data) => {
+    console.log("Punto recibido:", data);
+    const sesion = document.getElementById("sesion").value.trim();
+    if (sesion == null){
+        // Se establece el nuevo canal de comunicación
+        document.getElementById("sesion").value = data.sesion;
+    }
+    else if(data.sesion == sesion){
+        // Añado el nuevo punto al radar
+        points.push(data.punto);
+    } else {
+        console.info("Se omite el punto: Es de otro canal");
+    }
+});
+
 </script>
 
 </body>
