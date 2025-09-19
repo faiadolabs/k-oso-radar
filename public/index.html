@@ -26,7 +26,7 @@
 
 <div id="controls">
     <div>
-        <p>k-oso radar <span>v0.3.0</span></p>
+        <p>k-oso radar <span>v0.4.0</span></p>
         <div>
             <label>Estado del servidor: <span id="status"></span></span></label>
             <label>canal: <input type="number" step="1" min="1" id="sesion" value=""></label>
@@ -430,8 +430,9 @@ canvas.addEventListener('mousemove', e => {
     const invX = (e.clientX - offsetX) / scale;
     const invY = (e.clientY - offsetY) / scale;
     const polar = cartesianToPolar(invX, invY);
+    const polar_complementario = complementaryHeading(polar.theta);
     document.getElementById('mouseInfo').textContent = 
-        `Mouse: r=${polar.r.toFixed(1)} km, θ=${polar.theta.toFixed(1)}°`;
+        `Mouse: r=${polar.r.toFixed(1)} km, θ=${polar.theta.toFixed(1)}°, β=${polar_complementario.toFixed(1)}`;
 });
 canvas.addEventListener('mouseup', () => dragging = false);
 canvas.addEventListener('mouseleave', () => dragging = false);
