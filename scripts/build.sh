@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-IMAGE_NAME='k-oso-radar-radar-app'
+IMAGE_NAME='k-oso-radar-app'
 
 # detener inmediatamente si cualquier comando falla
 set -e
