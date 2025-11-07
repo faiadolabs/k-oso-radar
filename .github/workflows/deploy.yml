@@ -29,6 +29,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+      
+      - name: Configure Git identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
       # 1️⃣ Incrementar versión (patch)
       - name: Bump version
