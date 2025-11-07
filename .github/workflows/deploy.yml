@@ -62,8 +62,8 @@ jobs:
       # 5️⃣ Etiquetar y push imagen a DockerHub
       - name: Push Docker image
         run: |
-          docker tag radar-app "${{ secrets.DOCKERHUB_USERNAME }}/k-oso-radar-app:${VERSION}"
-          docker tag radar-app "${{ secrets.DOCKERHUB_USERNAME }}/k-oso-radar-app:latest"
+          docker tag k-oso-radar-app "${{ secrets.DOCKERHUB_USERNAME }}/k-oso-radar-app:${VERSION}"
+          docker tag k-oso-radar-app "${{ secrets.DOCKERHUB_USERNAME }}/k-oso-radar-app:latest"
           docker push "${{ secrets.DOCKERHUB_USERNAME }}/k-oso-radar-app:${VERSION}"
           docker push "${{ secrets.DOCKERHUB_USERNAME }}/k-oso-radar-app:latest"
 
