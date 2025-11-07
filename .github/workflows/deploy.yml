@@ -6,7 +6,7 @@ on:
       - main  # o tu rama principal
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -21,19 +21,47 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # Necesario para hacer commit con npm version
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 🚀 En el futuro para compilar (React con Vite/CRA), descomenta:
-      # - name: Setup Node.js
-      #   uses: actions/setup-node@v4
-      #   with:
-      #     node-version: 20
-      #
-      # - name: Install dependencies
-      #   run: npm ci
-      #
-      # - name: Build project
-      #   run: npm run build
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
+      # 1️⃣ Incrementar versión (patch)
+      - name: Bump version
+        run: |
+          npm version patch
+          git push --follow-tags
+
+      # 2️⃣ Actualizar HTML + construir Docker (usa tu script build)
+      - name: Build static and docker image
+        run: npm run build
+
+      # 3️⃣ Login a Docker Hub
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      # 4️⃣ Obtener versión del package.json para etiquetar imagen
+      - name: Read app version
+        id: app_version
+        run: echo "VERSION=$(node -p \"require('./package.json').version\")" >> $GITHUB_ENV
+
+      # 5️⃣ Etiquetar y push imagen a DockerHub
+      - name: Push Docker image
+        run: |
+          docker tag radar-app "${{ secrets.DOCKERHUB_USERNAME }}/k-oso-radar-app:${VERSION}"
+          docker tag radar-app "${{ secrets.DOCKERHUB_USERNAME }}/k-oso-radar-app:latest"
+          docker push "${{ secrets.DOCKERHUB_USERNAME }}/k-oso-radar-app:${VERSION}"
+          docker push "${{ secrets.DOCKERHUB_USERNAME }}/k-oso-radar-app:latest"
+
+      # 6️⃣ Deploy a GitHub Pages
+      # Deshabilitar Jekyll
       - name: Disable Jekyll
         run: echo "" > public/.nojekyll
 
