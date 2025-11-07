@@ -55,7 +55,9 @@ jobs:
       # 4️⃣ Obtener versión del package.json para etiquetar imagen
       - name: Read app version
         id: app_version
-        run: echo "VERSION=$(node -p \"require('./package.json').version\")" >> $GITHUB_ENV
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       # 5️⃣ Etiquetar y push imagen a DockerHub
       - name: Push Docker image
