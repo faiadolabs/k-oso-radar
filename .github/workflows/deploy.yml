@@ -12,6 +12,8 @@ permissions:
 
 jobs:
   deploy:
+    # Evita los commits infinitos de npm version (que generarían loops de despliegue sin fin) 
+    if: github.actor != 'github-actions[bot]'
     environment:
       name: github-pages
       # Para que GitHub muestre un botón “View Deployment” directamente en la UI del entorno
@@ -35,7 +37,7 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      # 1️⃣ Incrementar versión (patch)
+      # 1️⃣ Incrementar versión (patch). Debe ser antes del build
       - name: Bump version
         run: |
           npm version patch
