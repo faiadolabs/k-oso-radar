@@ -17,7 +17,7 @@ jobs:
     environment:
       name: github-pages
       # Para que GitHub muestre un botón “View Deployment” directamente en la UI del entorno
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: https://faiadolabs.github.io/k-oso-radar/
 
     runs-on: ubuntu-latest
     steps:
