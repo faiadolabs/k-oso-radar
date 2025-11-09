@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+  k-oso-radar-backend:
+    # Artefacto ya generado (en otro repo)
+    image: faiadolabs/k-oso-radar-backend
+    container_name: k-oso-radar-backend
+    networks:
+      - k_oso_radar_network
+    restart: unless-stopped
+    # Solo para comprobaciones (por http).
+    # Desde frontend conectarse a https://localhost:3444
+    ports:
+      - "3000:3000"
+
+  caddy:
+    image: caddy
+    container_name: caddy
+    depends_on:
+      - radar
+    ports:
+      - "3443:443" # frontend
+      - "3444:444" # backend
+    volumes:
+      - ./conf/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - k_oso_radar_network
+    restart: unless-stopped
+
+  # Levanto en modo desarrollo
+  k-oso-radar-app:
+    # Dockerfile raiz
+    build: ./
+    # Para servir y acceder por http
+    ports:
+      - "8080:80"
+    volumes:
+      - ./public:/usr/share/nginx/html
+    networks:
+      - k_oso_radar_network
+    restart: unless-stopped
+
+networks:
+  k_oso_radar_network:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:

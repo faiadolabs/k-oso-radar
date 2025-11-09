@@ -1,0 +1,9 @@
+localhost:443 {
+    # Frontend
+    reverse_proxy http://k-oso-radar-app:80
+}
+
+localhost:444 {
+    # Backend
+    reverse_proxy http://k-oso-radar-backend:3000
+}
