@@ -44,11 +44,11 @@ body {
   }
   
   /* Colores dinámicos */
-  .colorBtn[data-color="#622263"] { background: #622263; }
-  .colorBtn[data-color="#455134"] { background: #455134; }
-  .colorBtn[data-color="#564727"] { background: #564727; }
-  .colorBtn[data-color="#614527"] { background: #614527; }
-  .colorBtn[data-color="#777777"] { background: #777777; }
+  .colorBtn[data-color="#a931ab"] { background: #a931ab; }
+  .colorBtn[data-color="#a8ff2f"] { background: #a8ff2f; }
+  .colorBtn[data-color="#f7b424"] { background: #f7b424; }
+  .colorBtn[data-color="#16d8ff"] { background: #16d8ff; }
+  .colorBtn[data-color="#c1c1c1"] { background: #c1c1c1; }
   
   /* --- Input color personalizado --- */
   #pointColor {
