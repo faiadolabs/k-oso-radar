@@ -3,11 +3,23 @@ import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 
+import Radar from "./components/Radar"
+
 function App() {
   const [count, setCount] = useState(0)
+  const [points, setPoints] = useState([
+    { rKm: 20, angle: 45, color: "#00ff00" },
+    { rKm: 40, angle: 120, color: "#ff0000" }
+  ])
 
   return (
     <>
+      <div>
+        <h1>k-oso radar</h1>
+      </div>
+      <div>
+        <Radar points={points} rangeKm={100} pixelsPerKm={5} />
+      </div>
       <div>
         <a href="https://vite.dev" target="_blank">
           <img src={viteLogo} className="logo" alt="Vite logo" />
