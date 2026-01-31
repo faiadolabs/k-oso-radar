@@ -154,20 +154,38 @@ function sesionEnabled(ok){
     document.getElementById('newSesion').disabled = !ok;
 }
 
-document.getElementById('sesion').addEventListener('click', () => {
+function isSessionEnabled(){
+    // Explícitamente si el botón está en verde (lo que está viendo el usuario)
+    return statusEl.style.backgroundColor === "green"
+}
+
+// Recupera la sesión dado el id de sesión en el input canal
+document.getElementById('loadSesion').addEventListener('click', () => recuperarSesion());
+
+// Recupera la sesión dado cuando el input canal: pierde el foco o se presiona ENTER
+const sesionInputRef = document.getElementById('sesion');
+sesionInputRef.addEventListener('blur', () => recuperarSesion());
+sesionInputRef.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        recuperarSesion();
+    }
+});
+
+function recuperarSesion(){
     const sesion = document.getElementById("sesion").value.trim();
-    if (sesion) socket.emit("obtener_puntos", sesion, (error, records) => {
+    console.log("Se toca el botón de canal", {sesion}, {'isSessionEnabled':isSessionEnabled()})
+    if (sesion && sesion!=='' && isSessionEnabled()) socket.emit("obtener_puntos", sesion, (error, records) => {
         // Limpiar puntos locales y redibujar
         points = [];
         drawRadar();
         if(error){
-            console.error(error.error);
+            console.error({error});
             sesionState(false);
             return;
         } else{
             sesionState(true);
         }
-
+    
         console.log(records);
         
         records.forEach((data) => {
@@ -175,8 +193,7 @@ document.getElementById('sesion').addEventListener('click', () => {
             points.push(data.punto);
         });
     });
-
-});
+}
 
 // Crear nueva sesión
 document.getElementById('newSesion').addEventListener('click', () => {
