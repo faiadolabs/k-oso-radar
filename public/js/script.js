@@ -2,7 +2,7 @@ const canvas = document.getElementById('radar');
 const ctx = canvas.getContext('2d');
 
 let socket;
-let backend_uri = "https://k-oso-radar-backend-production.up.railway.app/"
+let backend_uri = "http://ismaelviac.ddns.net:3000/"
 
 let width = canvas.width = window.innerWidth;
 let height = canvas.height = window.innerHeight;
