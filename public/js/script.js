@@ -2,7 +2,7 @@ const canvas = document.getElementById('radar');
 const ctx = canvas.getContext('2d');
 
 let socket;
-let backend_uri = "http://ismaelviac.ddns.net:3000/"
+let backend_uri = "https://k-oso-radar-backend.faiadolabs.com/"
 
 let width = canvas.width = window.innerWidth;
 let height = canvas.height = window.innerHeight;
@@ -145,6 +145,9 @@ function animate() {
     requestAnimationFrame(animate);
 }
 
+// Intento de primera conexión por defecto
+reconnectSocket();
+
 function sesionState(ok){
     document.getElementById('sesion').style.backgroundColor = ok ? 'white' : '#FFC7C7';
 }
@@ -164,6 +167,7 @@ document.getElementById('loadSesion').addEventListener('click', () => recuperarS
 
 // Recupera la sesión dado cuando el input canal: pierde el foco o se presiona ENTER
 const sesionInputRef = document.getElementById('sesion');
+sesionInputRef.addEventListener('click', () => recuperarSesion());
 sesionInputRef.addEventListener('blur', () => recuperarSesion());
 sesionInputRef.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
@@ -245,7 +249,12 @@ function agregarPunto(angle){
     const r = parseFloat(document.getElementById('distance').value);
     const note = document.getElementById('note').value.slice(0,255);
     const color = document.getElementById('pointColor').value;
-    const user = document.getElementById('user').value;
+    const user = document.getElementById('user').value.trim();
+
+    if (!user || user.length < 3) {
+        alert('Antes de añadir cualquier punto, verifica primero tu callsign (nombre en star citizen)');
+        return;
+    }
     
     // Se pasa el radio del círculo a dibujar (importante para luego saber si se clica o no en el pq no es posible event DOM)
     const punto = {rKm: r, angle, radius_circulo: 6, note, color, user};
